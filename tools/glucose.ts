@@ -13,7 +13,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       limit: z.number().default(100).describe('Max readings to return'),
     },
     async ({ start_date, end_date, limit }) => {
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/glucose', {
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/glucose', {
         start_date, end_date, limit: String(limit),
       })
 

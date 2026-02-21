@@ -16,7 +16,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       const params: Record<string, string> = { start_date, end_date }
       if (metric_type) params.metric_type = metric_type
 
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/vitals', params)
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/vitals', params)
 
       const samples = data.samples as any[]
       if (samples.length === 0) {

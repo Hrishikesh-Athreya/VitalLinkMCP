@@ -18,7 +18,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       if (end_date) params.end_date = end_date
       if (latest_only) params.latest_only = 'true'
 
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/skin', params)
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/skin', params)
 
       const analyses = data.analyses as any[]
       if (analyses.length === 0) {

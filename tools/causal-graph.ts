@@ -18,7 +18,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       if (start_date) params.start_date = start_date
       if (end_date) params.end_date = end_date
 
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/causal-graph', params)
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/causal-graph', params)
 
       const edges = data.edges as any[]
       if (edges.length === 0) {

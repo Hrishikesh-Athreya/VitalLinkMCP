@@ -12,17 +12,14 @@ import { register as registerCausalPatterns } from './tools/causal-patterns.js'
 import { register as registerCausalGraph } from './tools/causal-graph.js'
 
 const CF_WORKER_URL = process.env.VITA_CLOUD_URL ?? 'https://vita-cloud.workers.dev'
-const VITA_AUTH_TOKEN = process.env.VITA_AUTH_TOKEN ?? ''
 const PORT = parseInt(process.env.PORT ?? '3000')
 
 export interface ToolContext {
   workerUrl: string
-  token: string
 }
 
 export async function fetchFromWorker(
   workerUrl: string,
-  token: string,
   path: string,
   params?: Record<string, string>
 ): Promise<any> {
@@ -32,9 +29,7 @@ export async function fetchFromWorker(
       if (v) url.searchParams.set(k, v)
     }
   }
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await fetch(url.toString())
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`API error ${res.status}: ${err}`)
@@ -50,10 +45,7 @@ function createVitaMcpServer(): McpServer {
     version: '1.0.0',
   })
 
-  const ctx: ToolContext = {
-    workerUrl: CF_WORKER_URL,
-    token: VITA_AUTH_TOKEN,
-  }
+  const ctx: ToolContext = { workerUrl: CF_WORKER_URL }
 
   registerHealthSummary(server, ctx)
   registerGlucose(server, ctx)
@@ -85,15 +77,12 @@ const httpServer = createServer(async (req, res) => {
   // MCP endpoint
   if (url.pathname === '/mcp') {
     try {
-      // Check for existing session
       const sessionId = req.headers['mcp-session-id'] as string | undefined
 
       if (sessionId && sessions.has(sessionId)) {
-        // Reuse existing session
         const session = sessions.get(sessionId)!
         await session.transport.handleRequest(req, res)
       } else {
-        // New session: create fresh server + transport
         const server = createVitaMcpServer()
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => crypto.randomUUID(),
@@ -101,7 +90,6 @@ const httpServer = createServer(async (req, res) => {
 
         await server.connect(transport)
 
-        // Store session for reuse
         transport.onclose = () => {
           const sid = transport.sessionId
           if (sid) sessions.delete(sid)

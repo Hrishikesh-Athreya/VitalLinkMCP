@@ -12,7 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       end_date: z.string().describe('ISO datetime end'),
     },
     async ({ start_date, end_date }) => {
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/environmental', { start_date, end_date })
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/environmental', { start_date, end_date })
 
       const conditions = data.conditions as any[]
       if (conditions.length === 0) {

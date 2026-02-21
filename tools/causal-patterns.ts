@@ -12,7 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       limit: z.number().default(20).describe('Max patterns to return'),
     },
     async ({ min_strength, limit }) => {
-      const data = await fetchFromWorker(ctx.workerUrl, ctx.token, '/api/v1/query/causal-patterns', {
+      const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/causal-patterns', {
         min_strength: String(min_strength),
         limit: String(limit),
       })
