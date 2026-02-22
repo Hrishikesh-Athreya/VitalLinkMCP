@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Health Insights</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #F0F2F7;
+    --card:      #FFFFFF;
+    --sep:       #E6EAF2;
+    --t1:        #0F1828;
+    --t2:        rgba(15,24,40,.65);
+    --t3:        rgba(15,24,40,.36);
+    --blue:      #4C6EF5;
+    --blue-lt:   #EEF2FF;
+    --teal:      #12B886;
+    --teal-lt:   #E6FCF5;
+    --orange:    #F76707;
+    --orange-lt: #FFF4E6;
+    --red:       #F03E3E;
+    --red-lt:    #FFF5F5;
+    --purple:    #7950F2;
+    --purple-lt: #F3F0FF;
+    --green:     #2F9E44;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--t1);
+    font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .loading { height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  .spin { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--sep); border-top-color: var(--blue); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-label { font-size: 14px; color: var(--t3); font-weight: 500; }
+
+  .page { max-width: 960px; margin: 0 auto; padding-bottom: 56px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 28px 24px 6px; }
+  .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+  .nav-greeting { font-size: 13px; font-weight: 500; color: var(--t3); }
+  .nav-title { font-size: 30px; font-weight: 800; letter-spacing: -.65px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--card); border: 1px solid var(--sep); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; box-shadow: 0 1px 4px rgba(15,24,40,.06); transition: background .14s; }
+  .icon-btn:hover { background: #E8ECF8; }
+  .nav-av { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #4C6EF5, #7950F2); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 2px 10px rgba(76,110,245,.38); }
+  .topdate { font-size: 13px; color: var(--t3); padding: 2px 24px 18px; font-weight: 500; }
+
+  .insight-banner { margin: 0 24px 22px; background: linear-gradient(135deg, #4C6EF5 0%, #7950F2 100%); border-radius: 22px; padding: 22px 24px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 6px 28px rgba(76,110,245,.36); }
+  .insight-banner::before { content: ''; position: absolute; right: -24px; top: -36px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,.08); pointer-events: none; }
+  .insight-banner::after { content: ''; position: absolute; right: 50px; bottom: -50px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,.05); pointer-events: none; }
+  .ib-pill { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.2); border-radius: 20px; padding: 3px 11px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 11px; }
+  .ib-q { font-size: 19px; font-weight: 800; line-height: 1.25; letter-spacing: -.35px; margin-bottom: 10px; }
+  .ib-txt { font-size: 13.5px; line-height: 1.78; opacity: .88; white-space: pre-line; max-height: 176px; overflow-y: auto; }
+  .ib-txt::-webkit-scrollbar { width: 3px; }
+  .ib-txt::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 3px; }
+  .ib-txt b { font-weight: 700; opacity: 1; }
+
+  .body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 0 24px; align-items: start; }
+  .col-left  { display: flex; flex-direction: column; gap: 16px; }
+  .col-right { display: flex; flex-direction: column; gap: 14px; }
+
+  .sec-hd { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--t3); margin-bottom: 8px; padding-left: 2px; }
+  .card { background: var(--card); border-radius: 20px; border: 1px solid var(--sep); overflow: hidden; box-shadow: 0 1px 3px rgba(15,24,40,.04), 0 4px 16px rgba(15,24,40,.05); }
+
+  .row-list { display: flex; flex-direction: column; }
+  .row-div  { height: 1px; background: var(--sep); margin: 0 14px; }
+  .row-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; transition: background .12s; cursor: default; }
+  .row-item:hover { background: #FAFBFF; }
+  .ri-ico { width: 40px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .ri-body { flex: 1; min-width: 0; }
+  .ri-name   { font-size: 14px; font-weight: 700; color: var(--t1); line-height: 1.3; }
+  .ri-detail { font-size: 12px; color: var(--t3); margin-top: 2px; line-height: 1.5; }
+  .ri-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; margin-top: 2px; white-space: nowrap; }
+  .bg-high   { background: var(--red-lt);    color: var(--red); }
+  .bg-medium { background: var(--orange-lt); color: var(--orange); }
+  .bg-low    { background: var(--teal-lt);   color: var(--teal); }
+
+  .disc { font-size: 11px; color: var(--t3); line-height: 1.65; padding-top: 12px; border-top: 1px solid var(--sep); }
+
+  .activity-pad { padding: 16px 18px 14px; }
+  .week-rings { display: flex; justify-content: space-between; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--sep); }
+  .wr-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .wr-day { font-size: 9px; font-weight: 700; color: var(--t3); text-transform: uppercase; }
+  .activity-body { display: flex; align-items: center; gap: 18px; }
+  .rings-wrap { width: 94px; height: 94px; flex-shrink: 0; }
+  .rings-wrap svg { width: 94px; height: 94px; display: block; }
+  .ring-leg { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+  .rl-row { display: flex; align-items: center; gap: 8px; }
+  .rl-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rl-name { flex: 1; font-size: 11px; font-weight: 600; color: var(--t2); }
+  .rl-val  { font-size: 13px; font-weight: 800; }
+  .rl-sub  { font-size: 9px; font-weight: 400; color: var(--t3); margin-left: 2px; }
+
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .metric-card { background: var(--card); border-radius: 20px; border: 1px solid var(--sep); padding: 16px 15px 14px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(15,24,40,.04), 0 3px 10px rgba(15,24,40,.05); position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(15,24,40,.1); }
+  .mc-accent { position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 20px 20px 0 0; }
+  .mc-icon { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 10px; }
+  .mc-lbl  { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 5px; }
+  .mc-val  { font-size: 30px; font-weight: 800; letter-spacing: -.8px; line-height: 1; }
+  .mc-unit { font-size: 12px; font-weight: 500; color: var(--t3); margin-left: 2px; }
+  .mc-dl   { margin-top: 8px; align-self: flex-start; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
+  .dl-bad  { background: var(--red-lt);    color: var(--red); }
+  .dl-warn { background: var(--orange-lt); color: var(--orange); }
+  .dl-good { background: var(--teal-lt);   color: var(--teal); }
+  .spark   { width: 100%; height: 36px; margin-top: 10px; display: block; }
+  .spark-tl { display: flex; justify-content: space-between; margin-top: 3px; }
+  .spark-tl span { font-size: 8px; color: var(--t3); }
+
+  .sleep-pad { padding: 18px; }
+  .slp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .slp-head-l { display: flex; align-items: center; gap: 10px; }
+  .slp-ico   { width: 34px; height: 34px; border-radius: 11px; background: var(--purple-lt); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .slp-lbl   { font-size: 12px; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: .07em; }
+  .slp-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--purple-lt); color: var(--purple); }
+  .slp-big   { font-size: 40px; font-weight: 800; letter-spacing: -.9px; line-height: 1; color: var(--t1); }
+  .slp-goal  { font-size: 13px; font-weight: 500; color: var(--t3); margin-left: 5px; }
+  .slp-sub   { font-size: 11.5px; color: var(--t3); margin: 4px 0 14px; }
+  .slp-bar   { height: 10px; border-radius: 6px; overflow: hidden; display: flex; gap: 1px; }
+  .slp-seg   { height: 100%; border-radius: 3px; }
+  .slp-times { display: flex; justify-content: space-between; margin-top: 6px; }
+  .slp-times span { font-size: 9.5px; color: var(--t3); font-weight: 500; }
+  .slp-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .slp-leg-item { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 500; color: var(--t2); }
+  .slp-leg-dot  { width: 8px; height: 8px; border-radius: 3px; }
+
+  .trend-pad    { padding: 18px; }
+  .trend-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+  .trend-lbl    { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 4px; }
+  .trend-big    { font-size: 40px; font-weight: 800; letter-spacing: -.9px; line-height: 1; }
+  .trend-unit   { font-size: 13px; font-weight: 500; color: var(--t3); margin-left: 3px; }
+  .trend-sub    { font-size: 11px; color: var(--t3); margin-top: 5px; }
+  .trend-ico    { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .bar-chart-svg { width: 100%; display: block; }
+  .bar-range    { font-size: 9.5px; color: var(--t3); text-align: right; margin-top: 4px; font-weight: 500; }
+
+  .chart-card-pad { padding: 18px; }
+  .chart-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 12px; }
+
+  .f { animation: fup .4s ease both; }
+  @keyframes fup { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+  .f:nth-child(1) { animation-delay: .00s; }
+  .f:nth-child(2) { animation-delay: .05s; }
+  .f:nth-child(3) { animation-delay: .10s; }
+  .f:nth-child(4) { animation-delay: .15s; }
+  .f:nth-child(5) { animation-delay: .20s; }
+
+  @media (max-width: 620px) {
+    .body { grid-template-columns: 1fr; padding: 0 16px; }
+    .page { max-width: 440px; }
+    .insight-banner { margin: 0 16px 18px; }
+    .topbar { padding: 22px 16px 4px; }
+    .topdate { padding: 2px 16px 16px; }
+  }
+
+  .json-fab { position: fixed; bottom: 24px; right: 24px; z-index: 1000; width: 46px; height: 46px; border-radius: 50%; background: var(--card); border: 1px solid var(--sep); color: var(--blue); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(76,110,245,.22); transition: transform .15s, box-shadow .15s; user-select: none; font-family: 'SF Mono', monospace; }
+  .json-fab:hover { box-shadow: 0 6px 28px rgba(76,110,245,.34); transform: scale(1.06); }
+  .json-panel { position: fixed; bottom: 82px; right: 18px; z-index: 999; width: 390px; max-width: calc(100vw - 32px); background: var(--card); border: 1px solid var(--sep); border-radius: 22px; padding: 18px; box-shadow: 0 12px 44px rgba(15,24,40,.15); display: none; flex-direction: column; gap: 11px; animation: slideUp .2s ease; }
+  .json-panel.open { display: flex; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .json-panel-title { font-size: 11px; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: .08em; }
+  .json-textarea { width: 100%; height: 200px; resize: vertical; background: var(--bg); color: var(--green); border: 1px solid var(--sep); border-radius: 12px; padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; line-height: 1.55; outline: none; tab-size: 2; }
+  .json-textarea::placeholder { color: var(--t3); }
+  .json-textarea.err { border-color: var(--red); color: var(--red); }
+  .json-err { font-size: 11px; color: var(--red); display: none; }
+  .json-err.show { display: block; }
+  .json-btns { display: flex; gap: 8px; }
+  .json-btn { flex: 1; padding: 10px; border-radius: 11px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+  .json-btn:hover { opacity: .85; }
+  .json-apply { background: var(--blue); color: #fff; }
+  .json-demo  { background: var(--blue-lt); color: var(--blue); }
+  .json-hint  { font-size: 10px; color: var(--t3); line-height: 1.55; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="loading">
+    <div class="spin"></div>
+    <div class="load-label">Analyzing your health data…</div>
+  </div>
+</div>
+
+<script>
+const DEMO_DATA = {
+  headache: {
+    query: "Why do I have a headache?",
+    summary: "Your headache is most likely caused by a combination of <b>short sleep</b> and <b>heavy late-night screen use</b> — both working against you at the same time last night. You got only <b>5h 08m</b> of sleep, which is 2.1 hours below your personal average. When sleep falls this far short, the brain's pain-processing threshold drops noticeably — blood vessels are more prone to dilation under stress, a well-documented trigger for both tension and migraine-type headaches.\n\nOn top of that, 94 minutes of phone use after 10pm suppressed your melatonin release right when your body needed it most. This likely pushed your actual sleep onset later, compressing your deep sleep window and cutting into the REM cycles that handle overnight restoration. Your resting heart rate sitting at 72 bpm — 6 beats above your baseline — confirms your nervous system never fully shifted into recovery mode overnight.\n\nYour activity yesterday added another layer: only 3,240 steps versus your usual 8,060 means reduced circulation and minimal endorphin output, both of which normally buffer against pain sensitivity throughout the day. The silver lining is that every single one of these triggers is within your control starting tonight.",
+    factors: [
+      { name:"Short sleep",         detail:"5h 08m — 2.1 hrs below your average. Your body didn't fully recover.",  impact:"high",   icon:"😴" },
+      { name:"Late-night screens",  detail:"94 min on your phone after 10pm disrupted melatonin production.",        impact:"high",   icon:"📱" },
+      { name:"Elevated resting HR", detail:"72 bpm is 6 above your baseline — a sign your body is under stress.",   impact:"medium", icon:"❤️" },
+      { name:"Low movement",        detail:"3,240 steps vs your usual 8,060. Low circulation worsens tension.",      impact:"medium", icon:"🚶" },
+      { name:"Long commute",        detail:"58 min commute added physical & mental fatigue on top of poor sleep.",   impact:"low",    icon:"🚌" }
+    ],
+    metrics: [
+      { label:"Sleep",       value:"5h 08m", unit:"",   icon:"🌙", delta:"↓ 2.1h",    deltaStatus:"bad",  sparkline:[7.1,7.4,6.8,7.2,6.5,5.9,5.1] },
+      { label:"Bedtime",     value:"1:12",   unit:"AM", icon:"🛏",  delta:"1.5h late", deltaStatus:"bad",  sparkline:[23.3,23.1,23.5,23.2,23.8,24.1,25.2] },
+      { label:"Steps",       value:"3,240",  unit:"",   icon:"🚶", delta:"↓ 4,820",   deltaStatus:"bad",  sparkline:[8200,9100,7800,8400,6900,5200,3240] },
+      { label:"Screen Time", value:"7h 24m", unit:"",   icon:"📱", delta:"↑ 2.1h",    deltaStatus:"warn", sparkline:[4.2,5.1,4.8,5.3,5.8,6.1,7.4] }
+    ],
+    charts: [
+      { type:"bar", title:"Steps", data:[{label:"M",value:8200},{label:"T",value:9100},{label:"W",value:7800},{label:"T",value:8400},{label:"F",value:6900},{label:"S",value:5200},{label:"S",value:3240}], unit:"steps", color:"#4C6EF5" }
+    ],
+    sleep: {
+      duration:"5h 08m", bedtime:"1:12 AM", waketime:"6:20 AM",
+      stages:[{label:"Awake",percent:12},{label:"REM",percent:22},{label:"Core",percent:28},{label:"Deep",percent:38}]
+    },
+    recommendations: [
+      { icon:"💧", title:"Hydrate now",           description:"Drink 2–3 glasses of water. Dehydration compounds headache pain." },
+      { icon:"📵", title:"No screens after 10pm", description:"Let melatonin kick in naturally tonight." },
+      { icon:"🌙", title:"Aim for 9 hrs tonight", description:"Start paying back the sleep debt you've been building." },
+      { icon:"🚶", title:"Short walk (15 min)",   description:"Improves circulation and eases tension headaches." }
+    ],
+  },
+  fatigue: {
+    query: "Why am I so exhausted today?",
+    summary: "You're exhausted today because your body simply did not recover overnight. At <b>4h 48m</b> of sleep — 2.5 hours below your average — you're carrying a significant sleep debt that compounds across consecutive nights. Your <b>HRV of 24ms</b> is the most telling signal here: it's 18ms below your baseline, meaning your autonomic nervous system is in a stressed, under-recovered state.\n\nThe root cause traces back to last night's 112 minutes of screen exposure after 10pm. That level of blue-light exposure actively suppresses melatonin and pushes your sleep onset window later. Zero exercise minutes yesterday closed the loop: physical activity during the day is one of the most powerful regulators of sleep pressure. Your resting HR of 74 bpm is 8 above baseline — another confirmation that your cardiovascular system is still in stress mode.",
+    factors: [
+      { name:"Sleep deprivation",  detail:"4h 48m — 2.5 hrs below average. You're carrying significant sleep debt.", impact:"high",   icon:"😴" },
+      { name:"Low HRV",            detail:"24ms is 18ms below your average — your body is under-recovered.",         impact:"high",   icon:"📈" },
+      { name:"Late-night screens", detail:"112 min after 10pm — likely what pushed your bedtime past 1am.",          impact:"high",   icon:"📱" },
+      { name:"No exercise",        detail:"0 workout minutes + only 3,240 steps. No energy cycle reset.",            impact:"medium", icon:"🏃" }
+    ],
+    metrics: [
+      { label:"Sleep",       value:"4h 48m", unit:"",   icon:"🌙", delta:"↓ 2.5h",  deltaStatus:"bad",  sparkline:[7.1,7.4,6.8,7.2,6.5,5.9,4.8] },
+      { label:"HRV",         value:"24",     unit:"ms", icon:"📈", delta:"↓ 18ms",  deltaStatus:"bad",  sparkline:[42,40,39,38,36,30,24] },
+      { label:"Steps",       value:"3,240",  unit:"",   icon:"🚶", delta:"↓ 4,820", deltaStatus:"bad",  sparkline:[8200,9100,7800,8400,6900,5200,3240] },
+      { label:"Screen Time", value:"7h 24m", unit:"",   icon:"📱", delta:"↑ 2.1h",  deltaStatus:"warn", sparkline:[4.2,5.1,4.8,5.3,5.8,6.1,7.4] }
+    ],
+    charts: [
+      { type:"bar", title:"Steps", data:[{label:"M",value:8200},{label:"T",value:9100},{label:"W",value:7800},{label:"T",value:8400},{label:"F",value:6900},{label:"S",value:5200},{label:"S",value:3240}], unit:"steps", color:"#4C6EF5" }
+    ],
+    sleep: {
+      duration:"4h 48m", bedtime:"1:28 AM", waketime:"6:16 AM",
+      stages:[{label:"Awake",percent:18},{label:"REM",percent:18},{label:"Core",percent:32},{label:"Deep",percent:32}]
+    },
+    recommendations: [
+      { icon:"🌙", title:"Aim for 9 hrs tonight", description:"Start recovering your sleep debt — your body needs it." },
+      { icon:"📵", title:"Screens off by 9:30pm", description:"Give melatonin time to kick in before bed." },
+      { icon:"😴", title:"20-min nap before 3pm", description:"Restores alertness without ruining tonight's sleep." },
+      { icon:"🚶", title:"Light movement",        description:"Will help more than caffeine right now." }
+    ],
+  }
+};
+
+// Color palette for charts and metrics
+const COLORS = ['#4C6EF5','#7950F2','#12B886','#F76707','#F03E3E','#339AF0'];
+const IMPACT_BG = { high:'rgba(240,62,62,.1)', medium:'rgba(247,103,7,.1)', low:'rgba(18,184,134,.1)' };
+const SLEEP_COLORS = ['#CCD5FF','#7950F2','#9775FA','#4C6EF5','#12B886','#F76707'];
+
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const today = () => new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+function weekRangeLabel() {
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const end = new Date(), start = new Date();
+  start.setDate(start.getDate()-6);
+  return fmt(start) + ' – ' + fmt(end);
+}
+function greetingText() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function sparkSVG(pts, color) {
+  if (!pts || pts.length < 2) return '';
+  const W=100, H=36, P=2;
+  const mn=Math.min(...pts), mx=Math.max(...pts), rng=mx-mn||1;
+  const grid = [0.33,0.66].map(pct=>{
+    const y=(P+(1-pct)*(H-P*2)).toFixed(1);
+    return '<line x1="'+P+'" y1="'+y+'" x2="'+(W-P)+'" y2="'+y+'" stroke="rgba(15,24,40,.05)" stroke-width="1"/>';
+  }).join('');
+  const coords = pts.map((v,i)=>{
+    const x = P + (i/(pts.length-1))*(W-P*2);
+    const y = H - P - ((v-mn)/rng)*(H-P*2);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  const line = coords.join(' ');
+  const fill = coords[0].split(',')[0]+','+(H-P)+' '+line+' '+coords[coords.length-1].split(',')[0]+','+(H-P);
+  const gid = 'g'+color.replace(/[^a-z0-9]/gi,'');
+  const lx = coords[coords.length-1].split(',')[0];
+  const ly = coords[coords.length-1].split(',')[1];
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".2"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+grid+'<polygon points="'+fill+'" fill="url(#'+gid+')" stroke="none"/><polyline points="'+line+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+lx+'" cy="'+ly+'" r="2.5" fill="'+color+'"/></svg>';
+}
+
+function barChartSVG(dataPoints, color) {
+  const W=280, H=100, PL=4, PR=34, PT=8, PB=20;
+  const values = dataPoints.map(d=>d.value);
+  const labels = dataPoints.map(d=>d.label);
+  const mx=Math.max(...values);
+  const topVal=Math.ceil(mx/1000)*1000||1;
+  const midVal=Math.round(topVal/2);
+  const cW=W-PL-PR, cH=H-PT-PB, bw=cW/values.length;
+  const grid=[topVal,midVal].map(v=>{
+    const y=(PT+cH-(v/topVal)*cH).toFixed(1);
+    const label=v>=1000?(v/1000).toFixed(0)+'k':v;
+    return '<line x1="'+PL+'" y1="'+y+'" x2="'+(W-PR)+'" y2="'+y+'" stroke="rgba(15,24,40,.07)" stroke-width="1" stroke-dasharray="3,3"/><text x="'+(W-PR+5)+'" y="'+(parseFloat(y)+3.5).toFixed(1)+'" font-size="8" fill="rgba(15,24,40,.35)" font-family="-apple-system,sans-serif" font-weight="600">'+label+'</text>';
+  }).join('');
+  const y0=(PT+cH).toFixed(1);
+  const zero='<line x1="'+PL+'" y1="'+y0+'" x2="'+(W-PR)+'" y2="'+y0+'" stroke="rgba(15,24,40,.1)" stroke-width="1"/><text x="'+(W-PR+5)+'" y="'+(parseFloat(y0)+3.5).toFixed(1)+'" font-size="8" fill="rgba(15,24,40,.35)" font-family="-apple-system,sans-serif" font-weight="600">0</text>';
+  const lastIdx = values.length - 1;
+  const gradColor = color || '#4C6EF5';
+  const bars=values.map((v,i)=>{
+    const bh=Math.max(3,(v/topVal)*cH);
+    const x=(PL+i*bw+bw*.12).toFixed(1);
+    const bww=(bw*.76).toFixed(1);
+    const y=(PT+cH-bh).toFixed(1);
+    const isLast=i===lastIdx;
+    const fill=isLast?'url(#bgrad)':'rgba(76,110,245,.22)';
+    const tc=isLast?'rgba(15,24,40,.75)':'rgba(15,24,40,.35)';
+    return '<rect x="'+x+'" y="'+y+'" width="'+bww+'" height="'+bh.toFixed(1)+'" rx="4.5" fill="'+fill+'"/><text x="'+(parseFloat(x)+parseFloat(bww)/2).toFixed(1)+'" y="'+(H-3)+'" font-size="8.5" fill="'+tc+'" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="600">'+labels[i]+'</text>';
+  }).join('');
+  return '<svg class="bar-chart-svg" viewBox="0 0 '+W+' '+H+'" style="height:'+H+'px"><defs><linearGradient id="bgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+gradColor+'"/><stop offset="100%" stop-color="#7950F2"/></linearGradient></defs>'+grid+zero+bars+'</svg>';
+}
+
+function lineChartSVG(dataPoints, color) {
+  const W=280, H=100, P=12;
+  const values = dataPoints.map(d=>d.value);
+  const labels = dataPoints.map(d=>d.label);
+  const mn=Math.min(...values), mx=Math.max(...values), rng=mx-mn||1;
+  const c = color || '#4C6EF5';
+  const coords = values.map((v,i)=>{
+    const x = P + (i/(values.length-1))*(W-P*2);
+    const y = H - P - ((v-mn)/rng)*(H-P*2-10);
+    return [x.toFixed(1), y.toFixed(1)];
+  });
+  const line = coords.map(([x,y])=>x+','+y).join(' ');
+  const fill = coords[0][0]+','+(H-P)+' '+line+' '+coords[coords.length-1][0]+','+(H-P);
+  const gid = 'lg'+c.replace(/[^a-z0-9]/gi,'');
+  const dots = coords.map(([x,y])=>'<circle cx="'+x+'" cy="'+y+'" r="2.5" fill="'+c+'"/>').join('');
+  const xlabels = labels.length <= 10 ? labels.map((l,i)=>'<text x="'+coords[i][0]+'" y="'+(H-1)+'" font-size="8" fill="rgba(15,24,40,.35)" text-anchor="middle" font-family="-apple-system,sans-serif">'+esc(l)+'</text>').join('') : '';
+  return '<svg class="bar-chart-svg" viewBox="0 0 '+W+' '+H+'" style="height:'+H+'px"><defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+c+'" stop-opacity=".18"/><stop offset="100%" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs><polygon points="'+fill+'" fill="url(#'+gid+')"/><polyline points="'+line+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+dots+xlabels+'</svg>';
+}
+
+function gaugeArcSVG(pct, color) {
+  pct = Math.min(1, Math.max(0, pct));
+  const r=40, cx=50, cy=50, sw=8;
+  const halfC = Math.PI * r;
+  const d = halfC * pct;
+  const track = 'rgba(15,24,40,.08)';
+  return '<svg viewBox="0 0 100 60" style="width:100%;height:auto"><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+track+'" stroke-width="'+sw+'" stroke-dasharray="'+halfC.toFixed(2)+' '+halfC.toFixed(2)+'" transform="rotate(180 '+cx+' '+cy+')"/><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+(color||'#4C6EF5')+'" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+halfC.toFixed(2)+' '+halfC.toFixed(2)+'" stroke-dashoffset="'+(halfC-d).toFixed(2)+'" transform="rotate(180 '+cx+' '+cy+')"/></svg>';
+}
+
+function renderChart(chart) {
+  const c = chart.color || '#4C6EF5';
+  let svg = '';
+  if (chart.type === 'bar') {
+    svg = barChartSVG(chart.data, c);
+  } else if (chart.type === 'line' || chart.type === 'sparkline') {
+    svg = lineChartSVG(chart.data, c);
+  } else if (chart.type === 'gauge' && chart.data.length > 0) {
+    const last = chart.data[chart.data.length-1];
+    svg = gaugeArcSVG(last.value / 100, c) + '<div style="text-align:center;margin-top:-8px"><span style="font-size:24px;font-weight:800;color:'+c+'">'+esc(last.value)+'</span>'+(chart.unit?'<span style="font-size:11px;color:var(--t3);margin-left:2px">'+esc(chart.unit)+'</span>':'')+'</div>';
+  } else if (chart.type === 'ring' && chart.data.length > 0) {
+    const last = chart.data[chart.data.length-1];
+    const pct = Math.min(1, last.value / 100);
+    const r=36, circ=2*Math.PI*r, d2=circ*pct;
+    svg = '<svg viewBox="0 0 100 100" style="width:80px;height:80px;display:block;margin:0 auto"><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="rgba(15,24,40,.08)" stroke-width="8"/><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+(c)+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(2)+'" stroke-dashoffset="'+(circ-d2).toFixed(2)+'" transform="rotate(-90 50 50)"/><text x="50" y="54" text-anchor="middle" font-size="18" font-weight="800" fill="'+c+'">'+Math.round(last.value)+'</text></svg>';
+  } else {
+    svg = lineChartSVG(chart.data, c);
+  }
+  return '<div class="card"><div class="chart-card-pad"><div class="chart-title">'+esc(chart.title)+(chart.unit?' ('+esc(chart.unit)+')':'')+'</div>'+svg+'</div></div>';
+}
+
+// Normalize data from render_health_insights schema or legacy demo format
+function normalize(raw) {
+  const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+  // Already in new format (from render_health_insights tool)
+  if (d.question && d.factors && Array.isArray(d.factors)) {
+    return d;
+  }
+
+  // Legacy demo format mapping
+  const out = { ...d };
+  if (d.query && !d.question) out.question = d.query;
+  if (d.likely_factors && !d.factors) {
+    out.factors = d.likely_factors.map(f=>({
+      name: f.factor||f.name||'?',
+      detail: f.rationale||f.detail||'',
+      impact: f.confidence||f.conf||'medium',
+      icon: f.icon||f.ico||'⚠️',
+    }));
+  }
+  if (d.suggestions && !d.recommendations) {
+    out.recommendations = d.suggestions.map(s=>({
+      icon: s.icon||s.ico||'💡',
+      title: s.title||'',
+      description: s.desc||s.description||'',
+    }));
+  }
+  if (d.sugg && !d.recommendations) {
+    out.recommendations = d.sugg.map(s=>({
+      icon: s.ico||s.icon||'💡',
+      title: s.title||'',
+      description: s.desc||s.description||'',
+    }));
+  }
+  if (d.disc && !d.disclaimer) out.disclaimer = d.disc;
+  return out;
+}
+
+function render(raw) {
+  const d = normalize(raw);
+  const question = d.question || d.query || '';
+  const summary = d.summary || '';
+  const factors = d.factors || [];
+  const metrics = d.metrics || [];
+  const charts = d.charts || [];
+  const sleep = d.sleep || null;
+  const recommendations = d.recommendations || [];
+  const disclaimer = d.disclaimer || d.disc || 'Wellness AI — Not medical advice. If symptoms persist or are severe, consult a healthcare professional.';
+
+  // Pick colors for metrics
+  const metricColors = metrics.map((m,i) => {
+    if (m.clr) return { clr: m.clr, tint: m.tint || 'rgba(76,110,245,.1)' };
+    const c = COLORS[i % COLORS.length];
+    return { clr: c, tint: c.replace(')', ',.1)').replace('rgb(','rgba(') };
+  });
+
+  // Sleep stage colors
+  const stageColors = sleep ? sleep.stages.map((_,i)=>SLEEP_COLORS[i%SLEEP_COLORS.length]) : [];
+
+  document.getElementById('root').innerHTML = `
+<div class="page">
+  <div class="topbar f">
+    <div class="topbar-left">
+      <span class="nav-greeting">${greetingText()}</span>
+      <span class="nav-title">Health</span>
+    </div>
+    <div class="topbar-right">
+      <div class="nav-av">V</div>
+    </div>
+  </div>
+  <div class="topdate f">${today()}</div>
+  <div class="insight-banner f">
+    <div class="ib-pill">✦ Wellness AI</div>
+    <div class="ib-q">${esc(question)}</div>
+    <div class="ib-txt">${summary}</div>
+  </div>
+  <div class="body">
+    <div class="col-left f">
+      ${factors.length > 0 ? `
+      <div>
+        <div class="sec-hd">Contributing Factors</div>
+        <div class="card">
+          <div class="row-list">
+            ${factors.map((f,i)=>{
+              const impact = f.impact || f.conf || 'medium';
+              const icon = f.icon || f.ico || '⚠️';
+              const bg = f.bg || IMPACT_BG[impact] || 'rgba(247,103,7,.1)';
+              return `${i>0?'<div class="row-div"></div>':''}<div class="row-item"><div class="ri-ico" style="background:${bg}">${icon}</div><div class="ri-body"><div class="ri-name">${esc(f.name)}</div><div class="ri-detail">${esc(f.detail)}</div></div><span class="ri-badge bg-${impact}">${impact}</span></div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>` : ''}
+      ${recommendations.length > 0 ? `
+      <div>
+        <div class="sec-hd">Recommendations</div>
+        <div class="card">
+          <div class="row-list">
+            ${recommendations.map((r,i)=>{
+              const icon = r.icon || r.ico || '💡';
+              const bg = r.bg || 'rgba(76,110,245,.1)';
+              return `${i>0?'<div class="row-div"></div>':''}<div class="row-item"><div class="ri-ico" style="background:${bg}">${icon}</div><div class="ri-body"><div class="ri-name">${esc(r.title)}</div><div class="ri-detail">${esc(r.description || r.desc || '')}</div></div></div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>` : ''}
+      <div class="disc">${esc(disclaimer)}</div>
+    </div>
+    <div class="col-right f">
+      ${metrics.length > 0 ? `
+      <div class="metric-grid">
+        ${metrics.map((m,i)=>{
+          const mc = metricColors[i];
+          const clr = mc.clr;
+          const tint = mc.tint;
+          const icon = m.icon || m.ico || '';
+          const lbl = m.label || m.lbl || '';
+          const val = m.value || m.val || '';
+          const unit = m.unit || '';
+          const dl = m.delta || m.dl || '';
+          const dlc = m.deltaStatus || m.dlc || '';
+          const spark = m.sparkline || m.spark || [];
+          return `<div class="metric-card"><div class="mc-accent" style="background:${clr}"></div><div class="mc-icon" style="background:${tint}">${icon}</div><div class="mc-lbl">${esc(lbl)}</div><div><span class="mc-val" style="color:${clr}">${esc(val)}</span>${unit?`<span class="mc-unit">${esc(unit)}</span>`:''}</div>${sparkSVG(spark,clr)}<div class="spark-tl"><span>7d ago</span><span>today</span></div>${dl?`<span class="mc-dl dl-${dlc}">${esc(dl)}</span>`:''}</div>`;
+        }).join('')}
+      </div>` : ''}
+      ${sleep ? `
+      <div class="card">
+        <div class="sleep-pad">
+          <div class="slp-head">
+            <div class="slp-head-l"><div class="slp-ico">🌙</div><span class="slp-lbl">Time Asleep</span></div>
+            <span class="slp-badge">Last Night</span>
+          </div>
+          <div><span class="slp-big">${esc(sleep.duration || sleep.val || '')}</span></div>
+          <div class="slp-sub">${esc(sleep.bedtime)} → ${esc(sleep.waketime)}</div>
+          <div class="slp-bar">${sleep.stages.map((s,i)=>{
+            const pct = s.percent != null ? s.percent/100 : (s.pct || 0);
+            const clr = s.clr || stageColors[i];
+            return `<div class="slp-seg" style="flex:${pct};background:${clr}"></div>`;
+          }).join('')}</div>
+          <div class="slp-times"><span>${esc(sleep.bedtime)}</span><span>${esc(sleep.waketime)}</span></div>
+          <div class="slp-legend">${sleep.stages.map((s,i)=>{
+            const clr = s.clr || stageColors[i];
+            return `<div class="slp-leg-item"><div class="slp-leg-dot" style="background:${clr}"></div>${esc(s.label || s.lbl || '')}</div>`;
+          }).join('')}</div>
+        </div>
+      </div>` : ''}
+      ${charts.map(chart => renderChart(chart)).join('')}
+    </div>
+  </div>
+</div>`;
+}
+
+// --- Message handling ---
+
+window.addEventListener('message', ev => {
+  const msg = ev.data;
+  if (!msg) return;
+  // Direct postMessage from parent
+  if (msg.type === 'HEALTH_DATA' && msg.data) { loadJSON(msg.data); return; }
+  // JSON-RPC 2.0 from Apps SDK
+  if (msg.jsonrpc !== '2.0') return;
+  if (msg.method === 'ui/notifications/tool-result') {
+    const sc = msg.params?.structuredContent;
+    if (sc) { loadJSON(sc); return; }
+  }
+  if (msg.method === 'ui/initialize') {
+    const q = (msg.params?.toolInput?.query || '').toLowerCase();
+    loadJSON(/tired|exhaust|fatigue|energy/.test(q) ? DEMO_DATA.fatigue : DEMO_DATA.headache);
+  }
+}, { passive: true });
+
+function loadJSON(raw) {
+  try {
+    const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    render(d);
+    return null;
+  } catch(err) { return err.message; }
+}
+
+// URL param fallback for standalone testing
+(function checkURLParam() {
+  const params = new URLSearchParams(location.search);
+  const raw = params.get('data');
+  if (!raw) return;
+  try { loadJSON(JSON.parse(decodeURIComponent(raw))); return; } catch(_) {}
+  try { loadJSON(JSON.parse(atob(raw))); } catch(_) {}
+})();
+
+// JSON debug panel (standalone testing only)
+document.body.insertAdjacentHTML('beforeend', '<button class="json-fab" id="jsonFab" title="Paste JSON data">{ }</button><div class="json-panel" id="jsonPanel"><div class="json-panel-title">Inject JSON Data</div><textarea class="json-textarea" id="jsonInput" placeholder="Paste your JSON here and click Apply…" spellcheck="false"></textarea><div class="json-err" id="jsonErr"></div><div class="json-btns"><button class="json-btn json-demo" id="jsonDemo">Load demo</button><button class="json-btn json-apply" id="jsonApply">▶ Apply</button></div><div class="json-hint">Also accepts URL param <code style="color:#4C6EF5">?data=&lt;base64json&gt;</code> or postMessage <code style="color:#4C6EF5">{ type:"HEALTH_DATA", data:{…} }</code></div></div>');
+
+const fab=document.getElementById('jsonFab'), panel=document.getElementById('jsonPanel'), input=document.getElementById('jsonInput'), errEl=document.getElementById('jsonErr'), applyBtn=document.getElementById('jsonApply'), demoBtn=document.getElementById('jsonDemo');
+fab.addEventListener('click',()=>panel.classList.toggle('open'));
+document.addEventListener('click',ev=>{ if(!panel.contains(ev.target)&&ev.target!==fab) panel.classList.remove('open'); });
+let debounce;
+input.addEventListener('input',()=>{ clearTimeout(debounce); debounce=setTimeout(()=>{ const v=input.value.trim(); if(!v){input.classList.remove('err');errEl.classList.remove('show');return;} try{JSON.parse(v);input.classList.remove('err');errEl.classList.remove('show');}catch(err){input.classList.add('err');errEl.textContent=err.message;errEl.classList.add('show');} },400); });
+applyBtn.addEventListener('click',()=>{ const v=input.value.trim(); if(!v) return; const err=loadJSON(v); if(err){input.classList.add('err');errEl.textContent='✕ '+err;errEl.classList.add('show');}else{input.classList.remove('err');errEl.classList.remove('show');panel.classList.remove('open');} });
+demoBtn.addEventListener('click',()=>{ input.value=JSON.stringify(DEMO_DATA.fatigue,null,2); input.classList.remove('err'); errEl.classList.remove('show'); });
+
+// Hide debug panel when inside iframe (ChatGPT context)
+if (window !== window.top) {
+  const fabEl = document.getElementById('jsonFab');
+  const panelEl = document.getElementById('jsonPanel');
+  if (fabEl) fabEl.style.display = 'none';
+  if (panelEl) panelEl.style.display = 'none';
+}
+
+// Default render for standalone
+if (!new URLSearchParams(location.search).get('data')) render(DEMO_DATA.headache);
+</script>
+</body>
+</html>

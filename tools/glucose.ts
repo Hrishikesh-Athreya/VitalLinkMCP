@@ -12,6 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       end_date: z.string().describe('ISO datetime end'),
       limit: z.number().default(100).describe('Max readings to return'),
     },
+    { readOnlyHint: true },
     async ({ start_date, end_date, limit }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/glucose', {
         start_date, end_date, limit: String(limit),
@@ -38,7 +39,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         ),
       ]
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

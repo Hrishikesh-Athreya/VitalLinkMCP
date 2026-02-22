@@ -12,6 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       start_date: z.string().optional().describe('ISO datetime start'),
       end_date: z.string().optional().describe('ISO datetime end'),
     },
+    { readOnlyHint: true },
     async ({ edge_type, start_date, end_date }) => {
       const params: Record<string, string> = {}
       if (edge_type) params.edge_type = edge_type
@@ -43,7 +44,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         lines.push('')
       }
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

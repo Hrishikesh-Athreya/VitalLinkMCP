@@ -11,6 +11,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       min_strength: z.number().default(0.6).describe('Minimum pattern strength (0-1)'),
       limit: z.number().default(20).describe('Max patterns to return'),
     },
+    { readOnlyHint: true },
     async ({ min_strength, limit }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/causal-patterns', {
         min_strength: String(min_strength),
@@ -32,7 +33,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         lines.push('')
       }
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

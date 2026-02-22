@@ -11,6 +11,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),
     },
+    { readOnlyHint: true },
     async ({ start_date, end_date }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/behavioral', { start_date, end_date })
 
@@ -37,7 +38,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         lines.push('')
       }
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

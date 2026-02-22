@@ -12,6 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       end_date: z.string().optional().describe('ISO datetime end'),
       latest_only: z.boolean().default(false).describe('If true, return only the most recent analysis'),
     },
+    { readOnlyHint: true },
     async ({ start_date, end_date, latest_only }) => {
       const params: Record<string, string> = {}
       if (start_date) params.start_date = start_date
@@ -42,7 +43,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         lines.push('')
       }
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

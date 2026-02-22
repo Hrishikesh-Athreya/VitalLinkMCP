@@ -8,6 +8,7 @@ export function register(server: McpServer, ctx: ToolContext) {
     'get_health_summary',
     'Get health score, latest vitals, and active causal patterns. Best starting point for understanding a user\'s current health state.',
     { window_hours: z.number().default(6).describe('Hours of data to consider') },
+    { readOnlyHint: true },
     async ({ window_hours }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/health-summary', {
         window_hours: String(window_hours),
@@ -33,7 +34,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         }
       }
 
-      return { content: [{ type: 'text' as const, text: lines.filter(Boolean).join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.filter(Boolean).join('\n') }],
+      }
     }
   )
 }

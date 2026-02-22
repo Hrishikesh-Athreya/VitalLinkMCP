@@ -12,6 +12,7 @@ export function register(server: McpServer, ctx: ToolContext) {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),
     },
+    { readOnlyHint: true },
     async ({ metric_type, start_date, end_date }) => {
       const params: Record<string, string> = { start_date, end_date }
       if (metric_type) params.metric_type = metric_type
@@ -40,7 +41,10 @@ export function register(server: McpServer, ctx: ToolContext) {
         lines.push('')
       }
 
-      return { content: [{ type: 'text' as const, text: lines.join('\n') }] }
+      return {
+        structuredContent: data,
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      }
     }
   )
 }

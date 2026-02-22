@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { registerAppResource, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server'
 import { register as registerHealthSummary } from './tools/health-summary.js'
 import { register as registerGlucose } from './tools/glucose.js'
 import { register as registerMeals } from './tools/meals.js'
@@ -10,9 +12,13 @@ import { register as registerEnvironment } from './tools/environment.js'
 import { register as registerSkin } from './tools/skin.js'
 import { register as registerCausalPatterns } from './tools/causal-patterns.js'
 import { register as registerCausalGraph } from './tools/causal-graph.js'
+import { register as registerRenderHealthInsights } from './tools/render-health-insights.js'
 
-const CF_WORKER_URL = process.env.VITA_CLOUD_URL ?? 'https://vita-cloud.workers.dev'
+const CF_WORKER_URL = process.env.VITA_CLOUD_URL ?? 'https://vita-cloud.hrishikesha40.workers.dev'
 const PORT = parseInt(process.env.PORT ?? '3000')
+
+const WIDGET_URI = 'ui://widget/vita-dashboard.html'
+const widgetHtml = readFileSync(new URL('./widget.html', import.meta.url), 'utf-8')
 
 export interface ToolContext {
   workerUrl: string
@@ -47,6 +53,33 @@ function createVitaMcpServer(): McpServer {
 
   const ctx: ToolContext = { workerUrl: CF_WORKER_URL }
 
+  // Register the widget as an MCP App resource
+  registerAppResource(
+    server,
+    'Vita Health Dashboard',
+    WIDGET_URI,
+    {
+      description: 'Interactive health insights dashboard with charts, metrics, and recommendations',
+      _meta: {
+        ui: {
+          csp: {
+            connectDomains: [CF_WORKER_URL],
+          },
+        },
+      },
+    },
+    async () => ({
+      contents: [
+        {
+          uri: WIDGET_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: widgetHtml,
+        },
+      ],
+    })
+  )
+
+  // Data tools (return structuredContent, no widget)
   registerHealthSummary(server, ctx)
   registerGlucose(server, ctx)
   registerMeals(server, ctx)
@@ -56,6 +89,9 @@ function createVitaMcpServer(): McpServer {
   registerSkin(server, ctx)
   registerCausalPatterns(server, ctx)
   registerCausalGraph(server, ctx)
+
+  // Render tool (returns structuredContent + widget resourceUri)
+  registerRenderHealthInsights(server)
 
   return server
 }
