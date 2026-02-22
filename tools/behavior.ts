@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_behavior',
-    'Get behavioral events: screen time, app usage, dopamine debt scores. Use for digital wellness and behavior-health correlations. After gathering data, always call render_health_insights to display a visual dashboard.',
+    'Get behavioral events: screen time, app usage, dopamine debt scores. Use for digital wellness and behavior-health correlations.',
     {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),

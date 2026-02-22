@@ -1,14 +1,26 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server'
 import type { ToolContext } from '../server.js'
 import { fetchFromWorker } from '../server.js'
 
+const WIDGET_URI = 'ui://widget/vita-dashboard.html'
+
 export function register(server: McpServer, ctx: ToolContext) {
-  server.tool(
+  registerAppTool(
+    server,
     'get_health_summary',
-    'Get health score, latest vitals, and active causal patterns. Best starting point for understanding a user\'s current health state. After gathering data, always call render_health_insights to display a visual dashboard.',
-    { window_hours: z.number().default(6).describe('Hours of data to consider') },
-    { readOnlyHint: true },
+    {
+      title: 'Health Summary',
+      description: 'Get health score, latest vitals, and active causal patterns. Best starting point for understanding a user\'s current health state.',
+      inputSchema: { window_hours: z.number().default(6).describe('Hours of data to consider') },
+      annotations: { readOnlyHint: true },
+      _meta: {
+        ui: { resourceUri: WIDGET_URI },
+        'openai/invokingMessage': 'Analyzing your health data…',
+        'openai/invokedMessage': 'Here is your health dashboard',
+      },
+    },
     async ({ window_hours }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/health-summary', {
         window_hours: String(window_hours),

@@ -64,12 +64,19 @@ function createVitaMcpServer(): McpServer {
     'Vita Health Dashboard',
     WIDGET_URI,
     {
-      description: 'Interactive health insights dashboard with charts, metrics, and recommendations',
+      description: 'Interactive health insights dashboard with charts, metrics, and recommendations. Displays health score gauge, vital metric cards with sparklines, sleep breakdown, contributing factors, and actionable recommendations.',
       _meta: {
         ui: {
           csp: {
             connectDomains: [CF_WORKER_URL],
+            resourceDomains: [CF_WORKER_URL],
           },
+        },
+        'openai/widgetPrefersBorder': true,
+        'openai/widgetDomain': CF_WORKER_URL,
+        'openai/widgetCSP': {
+          connect_domains: [CF_WORKER_URL],
+          resource_domains: [CF_WORKER_URL],
         },
       },
     },

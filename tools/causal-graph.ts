@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_causal_graph',
-    'Get causal graph edges showing relationships between health metrics (meal\u2192glucose, glucose\u2192HRV, behavior\u2192sleep, etc). Use for understanding health interconnections. After gathering data, always call render_health_insights to display a visual dashboard.',
+    'Get causal graph edges showing relationships between health metrics (meal\u2192glucose, glucose\u2192HRV, behavior\u2192sleep, etc). Use for understanding health interconnections.',
     {
       edge_type: z.string().optional().describe('Filter by edge type: meal_to_glucose, glucose_to_hrv, glucose_to_energy, behavior_to_hrv, meal_to_sleep, behavior_to_sleep, environment_to_hrv, environment_to_sleep, etc.'),
       start_date: z.string().optional().describe('ISO datetime start'),

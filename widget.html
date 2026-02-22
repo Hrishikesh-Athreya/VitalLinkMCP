@@ -370,13 +370,18 @@ function renderChart(chart) {
   return '<div class="card"><div class="chart-card-pad"><div class="chart-title">'+esc(chart.title)+(chart.unit?' ('+esc(chart.unit)+')':'')+'</div>'+svg+'</div></div>';
 }
 
-// Normalize data from render_health_insights schema or legacy demo format
+// Normalize data from any shape into the render schema
 function normalize(raw) {
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
-  // Already in new format (from render_health_insights tool)
+  // Already in render_health_insights format
   if (d.question && d.factors && Array.isArray(d.factors)) {
     return d;
+  }
+
+  // Health summary API format (healthScore, glucose, hrv, etc.)
+  if (d.healthScore != null) {
+    return normalizeHealthSummary(d);
   }
 
   // Legacy demo format mapping
@@ -405,6 +410,90 @@ function normalize(raw) {
     }));
   }
   if (d.disc && !d.disclaimer) out.disclaimer = d.disc;
+  return out;
+}
+
+// Build a dashboard from raw health-summary API response
+function normalizeHealthSummary(d) {
+  const score = d.healthScore;
+  const label = d.healthLabel || (score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Needs Attention');
+  const scoreColor = score >= 80 ? '#12B886' : score >= 60 ? '#4C6EF5' : score >= 40 ? '#F76707' : '#F03E3E';
+
+  const out = {
+    question: 'Health Overview',
+    summary: 'Your current health score is <b>' + score + '/100</b> (' + label + '). Here is a snapshot of your latest vitals and patterns.',
+    factors: [],
+    metrics: [],
+    charts: [
+      { type: 'gauge', title: 'Health Score', data: [{ label: label, value: score }], color: scoreColor }
+    ],
+    recommendations: [],
+  };
+
+  // Build metrics from available data
+  if (d.sleepHours != null) {
+    const hrs = d.sleepHours;
+    const status = hrs >= 7 ? 'good' : hrs >= 5.5 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'Sleep', value: hrs.toFixed(1), unit: 'hrs', icon: '🌙', delta: hrs < 7 ? '↓ ' + (7 - hrs).toFixed(1) + 'h' : 'On track', deltaStatus: status });
+  }
+  if (d.hrv != null) {
+    const hrv = Math.round(d.hrv);
+    const status = hrv >= 40 ? 'good' : hrv >= 25 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'HRV', value: String(hrv), unit: 'ms', icon: '📈', delta: hrv < 40 ? '↓ ' + (40 - hrv) + 'ms' : 'Normal', deltaStatus: status });
+  }
+  if (d.heartRate != null) {
+    const hr = d.heartRate;
+    const status = hr <= 72 ? 'good' : hr <= 80 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'Heart Rate', value: String(hr), unit: 'bpm', icon: '❤️', delta: hr > 72 ? '↑ ' + (hr - 72) + ' bpm' : 'Normal', deltaStatus: status });
+  }
+  if (d.glucose != null) {
+    const g = d.glucose;
+    const status = g >= 70 && g <= 140 ? 'good' : g > 140 ? 'bad' : 'warn';
+    out.metrics.push({ label: 'Glucose', value: String(g), unit: 'mg/dL', icon: '🩸', delta: g >= 70 && g <= 140 ? 'In range' : g > 140 ? '↑ High' : '↓ Low', deltaStatus: status });
+  }
+  if (d.steps != null) {
+    const s = d.steps;
+    const status = s >= 8000 ? 'good' : s >= 4000 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'Steps', value: s.toLocaleString(), unit: '', icon: '🚶', delta: s < 8000 ? '↓ ' + (8000 - s).toLocaleString() + ' to goal' : 'On track', deltaStatus: status });
+  }
+  if (d.dopamineDebt != null) {
+    const dd = Math.round(d.dopamineDebt);
+    const status = dd <= 30 ? 'good' : dd <= 60 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'Dopamine Debt', value: String(dd), unit: '/100', icon: '🧠', delta: dd > 50 ? '↑ High stimulation' : 'Moderate', deltaStatus: status });
+  }
+  if (d.skinScore != null) {
+    const ss = d.skinScore;
+    const status = ss >= 70 ? 'good' : ss >= 50 ? 'warn' : 'bad';
+    out.metrics.push({ label: 'Skin Score', value: String(ss), unit: '/100', icon: '✨', delta: ss >= 70 ? 'Healthy' : ss >= 50 ? 'Fair' : 'Needs care', deltaStatus: status });
+  }
+
+  // Build factors from causal patterns
+  if (d.topPatterns && d.topPatterns.length > 0) {
+    out.factors = d.topPatterns.map(p => {
+      const pct = Math.round(p.strength * 100);
+      const impact = pct >= 80 ? 'high' : pct >= 65 ? 'medium' : 'low';
+      const icons = { high: '🔴', medium: '🟠', low: '🟢' };
+      return { name: p.pattern.split(' ').slice(0, 6).join(' ') + '…', detail: p.pattern, impact: impact, icon: icons[impact] };
+    });
+  }
+
+  // Generate recommendations based on data
+  if (d.sleepHours != null && d.sleepHours < 6) {
+    out.recommendations.push({ icon: '🌙', title: 'Prioritize sleep tonight', description: 'You got ' + d.sleepHours.toFixed(1) + ' hours. Aim for 8+ hours to recover.' });
+  }
+  if (d.dopamineDebt != null && d.dopamineDebt > 50) {
+    out.recommendations.push({ icon: '📵', title: 'Reduce screen stimulation', description: 'Your dopamine debt is ' + Math.round(d.dopamineDebt) + '/100. Take a screen break.' });
+  }
+  if (d.hrv != null && d.hrv < 30) {
+    out.recommendations.push({ icon: '🧘', title: 'Try breathing exercises', description: 'Your HRV is low (' + Math.round(d.hrv) + 'ms). Deep breathing can help recovery.' });
+  }
+  if (d.steps != null && d.steps < 3000) {
+    out.recommendations.push({ icon: '🚶', title: 'Get moving', description: 'Only ' + d.steps.toLocaleString() + ' steps so far. A short walk boosts circulation.' });
+  }
+  if (d.heartRate != null && d.heartRate > 75) {
+    out.recommendations.push({ icon: '💧', title: 'Hydrate', description: 'Elevated heart rate (' + d.heartRate + ' bpm) can signal dehydration.' });
+  }
+
   return out;
 }
 

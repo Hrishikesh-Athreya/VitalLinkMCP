@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_environment',
-    'Get environmental conditions: temperature, humidity, AQI, UV index, pollen. Use for environment-health correlations. After gathering data, always call render_health_insights to display a visual dashboard.',
+    'Get environmental conditions: temperature, humidity, AQI, UV index, pollen. Use for environment-health correlations.',
     {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),

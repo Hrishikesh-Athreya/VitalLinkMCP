@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_glucose',
-    'Get CGM glucose readings with trend (rising/stable/falling) and energy state. Use for glucose analysis, meal impact, and energy patterns. After gathering data, always call render_health_insights to display a visual dashboard.',
+    'Get CGM glucose readings with trend (rising/stable/falling) and energy state. Use for glucose analysis, meal impact, and energy patterns.',
     {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),

@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_skin',
-    'Get skin analysis results: overall score, condition scores (acne, dark circles, redness, oiliness, pores, wrinkles, eye bags). Use for skin health tracking and cross-domain analysis. After gathering data, always call render_health_insights to display a visual dashboard.',
+    'Get skin analysis results: overall score, condition scores (acne, dark circles, redness, oiliness, pores, wrinkles, eye bags). Use for skin health tracking and cross-domain analysis.',
     {
       start_date: z.string().optional().describe('ISO datetime start'),
       end_date: z.string().optional().describe('ISO datetime end'),
