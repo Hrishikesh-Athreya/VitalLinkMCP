@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -18,7 +20,10 @@ const CF_WORKER_URL = process.env.VITA_CLOUD_URL ?? 'https://vita-cloud.hrishike
 const PORT = parseInt(process.env.PORT ?? '3000')
 
 const WIDGET_URI = 'ui://widget/vita-dashboard.html'
-const widgetHtml = readFileSync(new URL('./widget.html', import.meta.url), 'utf-8')
+// widget.html lives at project root; __dirname is either root (tsx dev) or dist/ (compiled)
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const widgetPath = resolve(__dirname, existsSync(resolve(__dirname, 'widget.html')) ? 'widget.html' : '../widget.html')
+const widgetHtml = readFileSync(widgetPath, 'utf-8')
 
 export interface ToolContext {
   workerUrl: string
