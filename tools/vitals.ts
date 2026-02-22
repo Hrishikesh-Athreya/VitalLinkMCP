@@ -4,15 +4,18 @@ import type { ToolContext } from '../server.js'
 import { fetchFromWorker } from '../server.js'
 
 export function register(server: McpServer, ctx: ToolContext) {
-  server.tool(
+  server.registerTool(
     'query_vitals',
-    'Get physiological vitals: HRV, heart rate, sleep, SpO2, steps, weight. Supports filtering by metric type.',
     {
-      metric_type: z.string().optional().describe('Filter by metric: hrv_sdnn, heart_rate, resting_hr, sleep_analysis, blood_oxygen, respiratory_rate, active_energy, step_count, body_weight'),
-      start_date: z.string().describe('ISO datetime start'),
-      end_date: z.string().describe('ISO datetime end'),
+      description: 'Get physiological vitals: HRV, heart rate, sleep, SpO2, steps, weight. Supports filtering by metric type.',
+      inputSchema: {
+        metric_type: z.string().optional().describe('Filter by metric: hrv_sdnn, heart_rate, resting_hr, sleep_analysis, blood_oxygen, respiratory_rate, active_energy, step_count, body_weight'),
+        start_date: z.string().describe('ISO datetime start'),
+        end_date: z.string().describe('ISO datetime end'),
+      },
+      annotations: { readOnlyHint: true },
+      _meta: { ui: { visibility: ['model', 'app'] } },
     },
-    { readOnlyHint: true },
     async ({ metric_type, start_date, end_date }) => {
       const params: Record<string, string> = { start_date, end_date }
       if (metric_type) params.metric_type = metric_type

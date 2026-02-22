@@ -4,15 +4,18 @@ import type { ToolContext } from '../server.js'
 import { fetchFromWorker } from '../server.js'
 
 export function register(server: McpServer, ctx: ToolContext) {
-  server.tool(
+  server.registerTool(
     'query_glucose',
-    'Get CGM glucose readings with trend (rising/stable/falling) and energy state. Use for glucose analysis, meal impact, and energy patterns.',
     {
-      start_date: z.string().describe('ISO datetime start'),
-      end_date: z.string().describe('ISO datetime end'),
-      limit: z.number().default(100).describe('Max readings to return'),
+      description: 'Get CGM glucose readings with trend (rising/stable/falling) and energy state. Use for glucose analysis, meal impact, and energy patterns.',
+      inputSchema: {
+        start_date: z.string().describe('ISO datetime start'),
+        end_date: z.string().describe('ISO datetime end'),
+        limit: z.number().default(100).describe('Max readings to return'),
+      },
+      annotations: { readOnlyHint: true },
+      _meta: { ui: { visibility: ['model', 'app'] } },
     },
-    { readOnlyHint: true },
     async ({ start_date, end_date, limit }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/glucose', {
         start_date, end_date, limit: String(limit),

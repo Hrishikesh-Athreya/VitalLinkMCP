@@ -4,15 +4,18 @@ import type { ToolContext } from '../server.js'
 import { fetchFromWorker } from '../server.js'
 
 export function register(server: McpServer, ctx: ToolContext) {
-  server.tool(
+  server.registerTool(
     'query_skin',
-    'Get skin analysis results: overall score, condition scores (acne, dark circles, redness, oiliness, pores, wrinkles, eye bags). Use for skin health tracking and cross-domain analysis.',
     {
-      start_date: z.string().optional().describe('ISO datetime start'),
-      end_date: z.string().optional().describe('ISO datetime end'),
-      latest_only: z.boolean().default(false).describe('If true, return only the most recent analysis'),
+      description: 'Get skin analysis results: overall score, condition scores (acne, dark circles, redness, oiliness, pores, wrinkles, eye bags). Use for skin health tracking and cross-domain analysis.',
+      inputSchema: {
+        start_date: z.string().optional().describe('ISO datetime start'),
+        end_date: z.string().optional().describe('ISO datetime end'),
+        latest_only: z.boolean().default(false).describe('If true, return only the most recent analysis'),
+      },
+      annotations: { readOnlyHint: true },
+      _meta: { ui: { visibility: ['model', 'app'] } },
     },
-    { readOnlyHint: true },
     async ({ start_date, end_date, latest_only }) => {
       const params: Record<string, string> = {}
       if (start_date) params.start_date = start_date

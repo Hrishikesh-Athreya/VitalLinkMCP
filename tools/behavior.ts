@@ -4,14 +4,17 @@ import type { ToolContext } from '../server.js'
 import { fetchFromWorker } from '../server.js'
 
 export function register(server: McpServer, ctx: ToolContext) {
-  server.tool(
+  server.registerTool(
     'query_behavior',
-    'Get behavioral events: screen time, app usage, dopamine debt scores. Use for digital wellness and behavior-health correlations.',
     {
-      start_date: z.string().describe('ISO datetime start'),
-      end_date: z.string().describe('ISO datetime end'),
+      description: 'Get behavioral events: screen time, app usage, dopamine debt scores. Use for digital wellness and behavior-health correlations.',
+      inputSchema: {
+        start_date: z.string().describe('ISO datetime start'),
+        end_date: z.string().describe('ISO datetime end'),
+      },
+      annotations: { readOnlyHint: true },
+      _meta: { ui: { visibility: ['model', 'app'] } },
     },
-    { readOnlyHint: true },
     async ({ start_date, end_date }) => {
       const data = await fetchFromWorker(ctx.workerUrl, '/api/v1/query/behavioral', { start_date, end_date })
 

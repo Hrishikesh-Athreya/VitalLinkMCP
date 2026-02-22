@@ -99,8 +99,11 @@
   .rl-sub  { font-size: 9px; font-weight: 400; color: var(--t3); margin-left: 2px; }
 
   .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .metric-card { background: var(--card); border-radius: 20px; border: 1px solid var(--sep); padding: 16px 15px 14px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(15,24,40,.04), 0 3px 10px rgba(15,24,40,.05); position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s; }
+  .metric-card { background: var(--card); border-radius: 20px; border: 1px solid var(--sep); padding: 16px 15px 14px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(15,24,40,.04), 0 3px 10px rgba(15,24,40,.05); position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s; cursor: pointer; }
   .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(15,24,40,.1); }
+  .metric-card.mc-loading { pointer-events: none; opacity: .6; }
+  .metric-card.mc-loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); animation: shimmer 1.2s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
   .mc-accent { position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 20px 20px 0 0; }
   .mc-icon { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 10px; }
   .mc-lbl  { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 5px; }
@@ -143,6 +146,21 @@
 
   .chart-card-pad { padding: 18px; }
   .chart-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 12px; }
+
+  .detail-page { max-width: 960px; margin: 0 auto; padding: 0 24px 56px; }
+  .detail-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--blue); cursor: pointer; padding: 24px 0 18px; border: none; background: none; font-family: inherit; }
+  .detail-back:hover { opacity: .75; }
+  .detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .detail-icon { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+  .detail-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 4px; }
+  .detail-val { font-size: 48px; font-weight: 800; letter-spacing: -1.2px; line-height: 1; }
+  .detail-unit { font-size: 16px; font-weight: 500; color: var(--t3); margin-left: 4px; }
+  .detail-chart { background: var(--card); border-radius: 20px; border: 1px solid var(--sep); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,24,40,.04), 0 4px 16px rgba(15,24,40,.05); }
+  .detail-chart-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 14px; }
+  .detail-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .detail-stat { background: var(--card); border-radius: 16px; border: 1px solid var(--sep); padding: 14px 16px; text-align: center; box-shadow: 0 1px 3px rgba(15,24,40,.04); }
+  .detail-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t3); margin-bottom: 4px; }
+  .detail-stat-val { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
 
   .f { animation: fup .4s ease both; }
   @keyframes fup { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
@@ -254,6 +272,21 @@ const DEMO_DATA = {
 const COLORS = ['#4C6EF5','#7950F2','#12B886','#F76707','#F03E3E','#339AF0'];
 const IMPACT_BG = { high:'rgba(240,62,62,.1)', medium:'rgba(247,103,7,.1)', low:'rgba(18,184,134,.1)' };
 const SLEEP_COLORS = ['#CCD5FF','#7950F2','#9775FA','#4C6EF5','#12B886','#F76707'];
+
+// State for detail views
+let lastData = null;
+let expandedMetric = null;
+
+// Map metric labels to tool calls for fetching historical data
+const METRIC_TOOL_MAP = {
+  'Sleep':         { tool: 'query_vitals', params: { metric_type: 'sleep_analysis' }, valueKey: 'samples', valFn: s => s.value, unit: 'hrs', lblFn: s => new Date(s.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'HRV':           { tool: 'query_vitals', params: { metric_type: 'hrv_sdnn' },       valueKey: 'samples', valFn: s => s.value, unit: 'ms',  lblFn: s => new Date(s.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'Heart Rate':    { tool: 'query_vitals', params: { metric_type: 'heart_rate' },     valueKey: 'samples', valFn: s => s.value, unit: 'bpm', lblFn: s => new Date(s.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'Steps':         { tool: 'query_vitals', params: { metric_type: 'step_count' },     valueKey: 'samples', valFn: s => s.value, unit: '',    lblFn: s => new Date(s.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'Glucose':       { tool: 'query_glucose', params: {},                                valueKey: 'readings', valFn: r => r.glucoseMgDL, unit: 'mg/dL', lblFn: r => new Date(r.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'Dopamine Debt': { tool: 'query_behavior', params: {},                               valueKey: 'events', valFn: e => e.dopamineDebtScore || 0, unit: '/100', lblFn: e => new Date(e.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+  'Skin Score':    { tool: 'query_skin', params: {},                                   valueKey: 'analyses', valFn: a => a.overallScore, unit: '/100', lblFn: a => new Date(a.timestamp).toLocaleDateString('en-US',{weekday:'short'}) },
+};
 
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const today = () => new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
@@ -499,6 +532,8 @@ function normalizeHealthSummary(d) {
 
 function render(raw) {
   const d = normalize(raw);
+  lastData = d;
+  expandedMetric = null;
   const question = d.question || d.query || '';
   const summary = d.summary || '';
   const factors = d.factors || [];
@@ -580,7 +615,7 @@ function render(raw) {
           const dl = m.delta || m.dl || '';
           const dlc = m.deltaStatus || m.dlc || '';
           const spark = m.sparkline || m.spark || [];
-          return `<div class="metric-card"><div class="mc-accent" style="background:${clr}"></div><div class="mc-icon" style="background:${tint}">${icon}</div><div class="mc-lbl">${esc(lbl)}</div><div><span class="mc-val" style="color:${clr}">${esc(val)}</span>${unit?`<span class="mc-unit">${esc(unit)}</span>`:''}</div>${sparkSVG(spark,clr)}<div class="spark-tl"><span>7d ago</span><span>today</span></div>${dl?`<span class="mc-dl dl-${dlc}">${esc(dl)}</span>`:''}</div>`;
+          return `<div class="metric-card" data-metric="${esc(lbl)}" onclick="expandMetric('${esc(lbl)}')"><div class="mc-accent" style="background:${clr}"></div><div class="mc-icon" style="background:${tint}">${icon}</div><div class="mc-lbl">${esc(lbl)}</div><div><span class="mc-val" style="color:${clr}">${esc(val)}</span>${unit?`<span class="mc-unit">${esc(unit)}</span>`:''}</div>${sparkSVG(spark,clr)}<div class="spark-tl"><span>7d ago</span><span>today</span></div>${dl?`<span class="mc-dl dl-${dlc}">${esc(dl)}</span>`:''}</div>`;
         }).join('')}
       </div>` : ''}
       ${sleep ? `
@@ -608,6 +643,159 @@ function render(raw) {
     </div>
   </div>
 </div>`;
+}
+
+// --- Tool calling from widget ---
+
+// Pending RPC responses keyed by request id
+const rpcPending = {};
+
+// Call an MCP tool from the widget. Tries JSON-RPC postMessage (MCP Apps protocol).
+function callTool(toolName, toolArgs) {
+  return new Promise((resolve, reject) => {
+    const id = rpcId++;
+    const timeout = setTimeout(() => { delete rpcPending[id]; reject(new Error('Tool call timeout')); }, 15000);
+    rpcPending[id] = (result, error) => {
+      clearTimeout(timeout);
+      delete rpcPending[id];
+      if (error) reject(new Error(error.message || 'Tool call failed'));
+      else resolve(result);
+    };
+    rpcSend({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: toolName, arguments: toolArgs } });
+  });
+}
+
+// Expand a metric card to show 7-day historical detail view
+async function expandMetric(label) {
+  const mapping = METRIC_TOOL_MAP[label];
+  if (!mapping) return;
+
+  // Find the metric in lastData for current value, icon, color
+  const metrics = lastData?.metrics || [];
+  const idx = metrics.findIndex(m => (m.label || m.lbl) === label);
+  const metric = metrics[idx];
+  if (!metric) return;
+
+  const clr = COLORS[idx % COLORS.length];
+  const icon = metric.icon || metric.ico || '';
+  const currentVal = metric.value || metric.val || '';
+  const unit = metric.unit || '';
+  const spark = metric.sparkline || metric.spark || [];
+
+  // If we have sparkline data, use it as fallback (no tool call needed for demo/standalone)
+  if (spark.length > 0 && !isEmbedded) {
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const history = spark.map((v, i) => ({ label: days[i % 7], value: v }));
+    renderDetail(label, icon, clr, currentVal, unit, history);
+    return;
+  }
+
+  // Show loading state on the card
+  const cardEl = document.querySelector(`[data-metric="${label}"]`);
+  if (cardEl) cardEl.classList.add('mc-loading');
+
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    const args = {
+      ...mapping.params,
+      start_date: start.toISOString(),
+      end_date: end.toISOString(),
+    };
+
+    const result = await callTool(mapping.tool, args);
+    const sc = result?.structuredContent || result;
+    const items = sc?.[mapping.valueKey] || [];
+
+    if (items.length === 0 && spark.length > 0) {
+      // Fallback to sparkline data
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const history = spark.map((v, i) => ({ label: days[i % 7], value: v }));
+      renderDetail(label, icon, clr, currentVal, unit, history);
+      return;
+    }
+
+    // Aggregate by day
+    const byDay = {};
+    for (const item of items) {
+      const ts = item.timestamp || item.date;
+      if (!ts) continue;
+      const day = new Date(ts).toLocaleDateString('en-US', { weekday: 'short' });
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(mapping.valFn(item));
+    }
+
+    const history = Object.entries(byDay).map(([day, vals]) => ({
+      label: day,
+      value: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10,
+    }));
+
+    if (history.length === 0 && spark.length > 0) {
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const fallback = spark.map((v, i) => ({ label: days[i % 7], value: v }));
+      renderDetail(label, icon, clr, currentVal, unit, fallback);
+      return;
+    }
+
+    renderDetail(label, icon, clr, currentVal, unit, history);
+  } catch (err) {
+    // On error, fall back to sparkline if available
+    if (spark.length > 0) {
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const history = spark.map((v, i) => ({ label: days[i % 7], value: v }));
+      renderDetail(label, icon, clr, currentVal, unit, history);
+    } else {
+      if (cardEl) cardEl.classList.remove('mc-loading');
+    }
+  }
+}
+
+// Render the expanded detail view for a metric
+function renderDetail(label, icon, color, currentVal, unit, history) {
+  expandedMetric = { label, history };
+  const tint = color.replace(')', ',.1)').replace('rgb(', 'rgba(');
+  const values = history.map(h => h.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+  const chart = lineChartSVG(history, color);
+
+  document.getElementById('root').innerHTML = `
+<div class="detail-page">
+  <button class="detail-back" onclick="render(lastData)">← Back to dashboard</button>
+  <div class="detail-header f">
+    <div class="detail-icon" style="background:${tint}">${icon}</div>
+    <div>
+      <div class="detail-title">${esc(label)}</div>
+      <div><span class="detail-val" style="color:${color}">${esc(currentVal)}</span>${unit ? `<span class="detail-unit">${esc(unit)}</span>` : ''}</div>
+    </div>
+  </div>
+  <div class="detail-stats f">
+    <div class="detail-stat">
+      <div class="detail-stat-lbl">Min</div>
+      <div class="detail-stat-val" style="color:var(--teal)">${formatStatVal(min, unit)}</div>
+    </div>
+    <div class="detail-stat">
+      <div class="detail-stat-lbl">Avg</div>
+      <div class="detail-stat-val" style="color:var(--blue)">${formatStatVal(avg, unit)}</div>
+    </div>
+    <div class="detail-stat">
+      <div class="detail-stat-lbl">Max</div>
+      <div class="detail-stat-val" style="color:var(--orange)">${formatStatVal(max, unit)}</div>
+    </div>
+  </div>
+  <div class="detail-chart f">
+    <div class="detail-chart-title">7-Day Trend</div>
+    ${chart}
+  </div>
+</div>`;
+}
+
+function formatStatVal(v, unit) {
+  const formatted = Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1);
+  return esc(formatted);
 }
 
 // --- Message handling ---
@@ -686,9 +874,17 @@ window.addEventListener('message', ev => {
     return;
   }
 
-  // Response to ui/initialize
-  if (msg.id != null && msg.result && !msg.method) {
-    rpcNotify('ui/notifications/initialized', {});
+  // JSON-RPC response (for tool calls and ui/initialize)
+  if (msg.id != null && !msg.method) {
+    // Route to pending callTool() promises
+    if (rpcPending[msg.id]) {
+      rpcPending[msg.id](msg.result, msg.error);
+      return;
+    }
+    // ui/initialize response
+    if (msg.result) {
+      rpcNotify('ui/notifications/initialized', {});
+    }
     return;
   }
 
@@ -716,6 +912,7 @@ if (isEmbedded) {
 function loadJSON(raw) {
   try {
     const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    lastData = d;
     render(d);
     return null;
   } catch(err) { return err.message; }
