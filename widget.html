@@ -634,6 +634,29 @@ function rpcNotify(method, params) {
   rpcSend({ jsonrpc: '2.0', method, params: params || {} });
 }
 
+// === ChatGPT host: window.openai global ===
+// ChatGPT injects window.openai with toolOutput, toolInput, theme, etc.
+// and fires 'openai:set_globals' CustomEvent when data arrives.
+
+function tryLoadFromOpenAI() {
+  const data = window.openai?.toolOutput;
+  if (data) {
+    loadJSON(data);
+    return true;
+  }
+  return false;
+}
+
+// Listen for ChatGPT's openai:set_globals event
+window.addEventListener('openai:set_globals', (event) => {
+  const globals = event.detail?.globals;
+  if (globals?.toolOutput) {
+    loadJSON(globals.toolOutput);
+  }
+});
+
+// === MCP Apps SDK: JSON-RPC postMessage (for MCP Inspector & other hosts) ===
+
 window.addEventListener('message', ev => {
   const msg = ev.data;
   if (!msg) return;
@@ -641,77 +664,53 @@ window.addEventListener('message', ev => {
   // Direct postMessage from parent (non-RPC)
   if (msg.type === 'HEALTH_DATA' && msg.data) { loadJSON(msg.data); return; }
 
-  // Must be JSON-RPC 2.0
+  // JSON-RPC 2.0 (MCP Inspector, non-ChatGPT hosts)
   if (msg.jsonrpc !== '2.0') return;
 
   const p = msg.params || {};
 
-  // --- Notifications from Host ---
-
-  // Tool input: the tool's arguments (sent after init handshake)
   if (msg.method === 'ui/notifications/tool-input') {
     const args = p.arguments || p;
     if (args && typeof args === 'object') { loadJSON(args); }
     return;
   }
 
-  // Partial tool input (streaming)
   if (msg.method === 'ui/notifications/tool-input-partial') {
     const args = p.arguments || p;
     if (args && typeof args === 'object') { loadJSON(args); }
     return;
   }
 
-  // Tool result: structuredContent from tool execution
   if (msg.method === 'ui/notifications/tool-result') {
     if (p.structuredContent) { loadJSON(p.structuredContent); return; }
-    if (p.content) {
-      // Try to extract data from text content
-      for (const c of Array.isArray(p.content) ? p.content : [p.content]) {
-        if (c.type === 'text' && c.text) {
-          try { loadJSON(JSON.parse(c.text)); return; } catch(_) {}
-        }
-      }
-    }
     return;
   }
 
-  // Host context changed (theme, etc.)
-  if (msg.method === 'ui/notifications/host-context-changed') {
-    return; // Could handle theme changes here
-  }
-
-  // Resource teardown request
-  if (msg.method === 'ui/resource-teardown') {
-    // Respond to teardown
-    if (msg.id != null) {
-      rpcSend({ jsonrpc: '2.0', id: msg.id, result: {} });
-    }
-    return;
-  }
-
-  // --- Responses to our requests ---
-
-  // Response to our ui/initialize request
+  // Response to ui/initialize
   if (msg.id != null && msg.result && !msg.method) {
-    // This is a response - check if it's our init response
-    const r = msg.result;
-    if (r.capabilities || r.hostContext) {
-      // Init response received - send initialized notification
-      rpcNotify('ui/notifications/initialized', {});
-    }
+    rpcNotify('ui/notifications/initialized', {});
     return;
   }
-}, { passive: true });
 
-// --- Initialization handshake ---
-// If embedded in an iframe (ChatGPT), initiate the Apps SDK handshake
+  // Resource teardown
+  if (msg.method === 'ui/resource-teardown') {
+    if (msg.id != null) rpcSend({ jsonrpc: '2.0', id: msg.id, result: {} });
+    return;
+  }
+});
+
+// === Boot ===
+
 if (isEmbedded) {
-  rpcRequest('ui/initialize', {
-    protocolVersion: '2025-03-26',
-    clientInfo: { name: 'vita-health-widget', version: '1.0.0' },
-    capabilities: {},
-  });
+  // Try ChatGPT's window.openai first
+  if (!tryLoadFromOpenAI()) {
+    // Fallback: try JSON-RPC handshake for non-ChatGPT hosts
+    rpcRequest('ui/initialize', {
+      protocolVersion: '2025-03-26',
+      clientInfo: { name: 'vita-health-widget', version: '1.0.0' },
+      capabilities: {},
+    });
+  }
 }
 
 function loadJSON(raw) {

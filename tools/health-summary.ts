@@ -17,8 +17,10 @@ export function register(server: McpServer, ctx: ToolContext) {
       annotations: { readOnlyHint: true },
       _meta: {
         ui: { resourceUri: WIDGET_URI },
-        'openai/invokingMessage': 'Analyzing your health data…',
-        'openai/invokedMessage': 'Here is your health dashboard',
+        'openai/toolInvocation': {
+          invoking: 'Analyzing your health data…',
+          invoked: 'Here is your health dashboard',
+        },
       },
     },
     async ({ window_hours }) => {
