@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'get_health_summary',
-    'Get health score, latest vitals, and active causal patterns. Best starting point for understanding a user\'s current health state.',
+    'Get health score, latest vitals, and active causal patterns. Best starting point for understanding a user\'s current health state. After gathering data, always call render_health_insights to display a visual dashboard.',
     { window_hours: z.number().default(6).describe('Hours of data to consider') },
     { readOnlyHint: true },
     async ({ window_hours }) => {

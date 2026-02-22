@@ -51,7 +51,7 @@ export function register(server: McpServer) {
     'render_health_insights',
     {
       title: 'Render Health Insights',
-      description: 'Render a rich health dashboard widget with charts, metrics, and recommendations. Call this AFTER analyzing health data to display visual insights to the user.',
+      description: 'IMPORTANT: You MUST call this tool as the final step after answering any health question. It renders a visual health dashboard for the user. After calling data tools (health summary, glucose, vitals, behavior, meals, etc.) and forming your analysis, ALWAYS call this tool to display the results visually. Pass your synthesized insights, contributing factors, relevant metrics with sparklines, chart data, and actionable recommendations.',
       inputSchema,
       annotations: { readOnlyHint: true },
       _meta: {

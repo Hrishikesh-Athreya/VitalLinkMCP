@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_meals',
-    'Get meal events with ingredients, glycemic load, and cooking method. Use for nutrition analysis and glucose-meal correlations.',
+    'Get meal events with ingredients, glycemic load, and cooking method. Use for nutrition analysis and glucose-meal correlations. After gathering data, always call render_health_insights to display a visual dashboard.',
     {
       start_date: z.string().describe('ISO datetime start'),
       end_date: z.string().describe('ISO datetime end'),

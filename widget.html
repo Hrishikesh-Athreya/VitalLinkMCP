@@ -523,6 +523,8 @@ function render(raw) {
 
 // --- Message handling ---
 
+let isEmbedded = (window !== window.top);
+
 window.addEventListener('message', ev => {
   const msg = ev.data;
   if (!msg) return;
@@ -535,8 +537,9 @@ window.addEventListener('message', ev => {
     if (sc) { loadJSON(sc); return; }
   }
   if (msg.method === 'ui/initialize') {
-    const q = (msg.params?.toolInput?.query || '').toLowerCase();
-    loadJSON(/tired|exhaust|fatigue|energy/.test(q) ? DEMO_DATA.fatigue : DEMO_DATA.headache);
+    // Mark as embedded — do NOT render demo data.
+    // Just keep the loading spinner and wait for tool-result with real data.
+    isEmbedded = true;
   }
 }, { passive: true });
 
@@ -576,8 +579,8 @@ if (window !== window.top) {
   if (panelEl) panelEl.style.display = 'none';
 }
 
-// Default render for standalone
-if (!new URLSearchParams(location.search).get('data')) render(DEMO_DATA.headache);
+// Default render for standalone only (not when embedded in ChatGPT iframe)
+if (!isEmbedded && !new URLSearchParams(location.search).get('data')) render(DEMO_DATA.headache);
 </script>
 </body>
 </html>

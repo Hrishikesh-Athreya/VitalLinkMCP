@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_vitals',
-    'Get physiological vitals: HRV, heart rate, sleep, SpO2, steps, weight. Supports filtering by metric type.',
+    'Get physiological vitals: HRV, heart rate, sleep, SpO2, steps, weight. Supports filtering by metric type. After gathering data, always call render_health_insights to display a visual dashboard.',
     {
       metric_type: z.string().optional().describe('Filter by metric: hrv_sdnn, heart_rate, resting_hr, sleep_analysis, blood_oxygen, respiratory_rate, active_energy, step_count, body_weight'),
       start_date: z.string().describe('ISO datetime start'),

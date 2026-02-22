@@ -6,7 +6,7 @@ import { fetchFromWorker } from '../server.js'
 export function register(server: McpServer, ctx: ToolContext) {
   server.tool(
     'query_causal_patterns',
-    'Get discovered causal patterns from the health graph. Patterns show relationships like \'high-GL meals \u2192 glucose spikes \u2192 poor sleep\'. Only returns patterns with 5+ observations.',
+    'Get discovered causal patterns from the health graph. Patterns show relationships like \'high-GL meals \u2192 glucose spikes \u2192 poor sleep\'. Only returns patterns with 5+ observations. After gathering data, always call render_health_insights to display a visual dashboard.',
     {
       min_strength: z.number().default(0.6).describe('Minimum pattern strength (0-1)'),
       limit: z.number().default(20).describe('Max patterns to return'),
