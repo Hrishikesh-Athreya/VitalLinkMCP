@@ -613,24 +613,106 @@ function render(raw) {
 // --- Message handling ---
 
 let isEmbedded = (window !== window.top);
+let rpcId = 1;
+
+// Send JSON-RPC 2.0 message to parent
+function rpcSend(msg) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(msg, '*');
+  }
+}
+
+// Send JSON-RPC request (expects response)
+function rpcRequest(method, params) {
+  const id = rpcId++;
+  rpcSend({ jsonrpc: '2.0', id, method, params: params || {} });
+  return id;
+}
+
+// Send JSON-RPC notification (no response expected)
+function rpcNotify(method, params) {
+  rpcSend({ jsonrpc: '2.0', method, params: params || {} });
+}
 
 window.addEventListener('message', ev => {
   const msg = ev.data;
   if (!msg) return;
-  // Direct postMessage from parent
+
+  // Direct postMessage from parent (non-RPC)
   if (msg.type === 'HEALTH_DATA' && msg.data) { loadJSON(msg.data); return; }
-  // JSON-RPC 2.0 from Apps SDK
+
+  // Must be JSON-RPC 2.0
   if (msg.jsonrpc !== '2.0') return;
-  if (msg.method === 'ui/notifications/tool-result') {
-    const sc = msg.params?.structuredContent;
-    if (sc) { loadJSON(sc); return; }
+
+  const p = msg.params || {};
+
+  // --- Notifications from Host ---
+
+  // Tool input: the tool's arguments (sent after init handshake)
+  if (msg.method === 'ui/notifications/tool-input') {
+    const args = p.arguments || p;
+    if (args && typeof args === 'object') { loadJSON(args); }
+    return;
   }
-  if (msg.method === 'ui/initialize') {
-    // Mark as embedded — do NOT render demo data.
-    // Just keep the loading spinner and wait for tool-result with real data.
-    isEmbedded = true;
+
+  // Partial tool input (streaming)
+  if (msg.method === 'ui/notifications/tool-input-partial') {
+    const args = p.arguments || p;
+    if (args && typeof args === 'object') { loadJSON(args); }
+    return;
+  }
+
+  // Tool result: structuredContent from tool execution
+  if (msg.method === 'ui/notifications/tool-result') {
+    if (p.structuredContent) { loadJSON(p.structuredContent); return; }
+    if (p.content) {
+      // Try to extract data from text content
+      for (const c of Array.isArray(p.content) ? p.content : [p.content]) {
+        if (c.type === 'text' && c.text) {
+          try { loadJSON(JSON.parse(c.text)); return; } catch(_) {}
+        }
+      }
+    }
+    return;
+  }
+
+  // Host context changed (theme, etc.)
+  if (msg.method === 'ui/notifications/host-context-changed') {
+    return; // Could handle theme changes here
+  }
+
+  // Resource teardown request
+  if (msg.method === 'ui/resource-teardown') {
+    // Respond to teardown
+    if (msg.id != null) {
+      rpcSend({ jsonrpc: '2.0', id: msg.id, result: {} });
+    }
+    return;
+  }
+
+  // --- Responses to our requests ---
+
+  // Response to our ui/initialize request
+  if (msg.id != null && msg.result && !msg.method) {
+    // This is a response - check if it's our init response
+    const r = msg.result;
+    if (r.capabilities || r.hostContext) {
+      // Init response received - send initialized notification
+      rpcNotify('ui/notifications/initialized', {});
+    }
+    return;
   }
 }, { passive: true });
+
+// --- Initialization handshake ---
+// If embedded in an iframe (ChatGPT), initiate the Apps SDK handshake
+if (isEmbedded) {
+  rpcRequest('ui/initialize', {
+    protocolVersion: '2025-03-26',
+    clientInfo: { name: 'vita-health-widget', version: '1.0.0' },
+    capabilities: {},
+  });
+}
 
 function loadJSON(raw) {
   try {
