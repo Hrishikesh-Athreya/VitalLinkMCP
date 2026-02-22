@@ -56,10 +56,9 @@ export function register(server: McpServer) {
       annotations: { readOnlyHint: true },
       _meta: {
         ui: { resourceUri: WIDGET_URI },
-        'openai/toolInvocation': {
-          invoking: 'Building your health dashboard…',
-          invoked: 'Here are your personalized health insights',
-        },
+        'openai/outputTemplate': WIDGET_URI,
+        'openai/toolInvocation/invoking': 'Building your health dashboard…',
+        'openai/toolInvocation/invoked': 'Here are your personalized health insights',
       },
     },
     async (args) => {
